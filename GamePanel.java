@@ -2,6 +2,9 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
 
+import java.io.*;
+import java.util.Scanner;
+
 public class GamePanel extends JPanel implements ActionListener {
     private final int SCREEN_WIDTH = 800;
     private final int SCREEN_HEIGHT = 600;
@@ -11,8 +14,8 @@ public class GamePanel extends JPanel implements ActionListener {
     // Snake variables
     private final int x[] = new int[SCREEN_WIDTH * SCREEN_HEIGHT / (UNIT_SIZE * UNIT_SIZE)];
     private final int y[] = new int[SCREEN_WIDTH * SCREEN_HEIGHT / (UNIT_SIZE * UNIT_SIZE)];
-    private int bodyParts = 6; // Initial snake length
-    private char direction = 'R'; // 'U' = up, 'D' = down, 'L' = left, 'R' = right
+    private int bodyParts; // Snake length
+    private char direction; // 'U' = up, 'D' = down, 'L' = left, 'R' = right
     private char colorList[] = {'R', 'G', 'B', 'Y', 'C', 'P', 'W'};
     private int color = 1;
     
@@ -20,11 +23,17 @@ public class GamePanel extends JPanel implements ActionListener {
     private int foodX;
     private int foodY;
     
-    
-    private int score = 0;
-    private boolean running = false; // Game state
+    // Game state
+    private boolean running = false; 
     private boolean pause = false;
     private boolean customize = false;
+    private boolean leaderboard = false;
+    
+    // Game scores
+    private int score = 0;
+    private int[] scoreBoard = new int[10];
+    private String[] nameBoard = new String[10];
+    private boolean beaten = false;
     
     private Timer timer;
     
@@ -35,12 +44,16 @@ public class GamePanel extends JPanel implements ActionListener {
         addKeyListener(new MyKeyAdapter());
         
         startGame();
+        
+        try { updateLeaderboard(); }
+        catch (IOException ioe) { ioe.printStackTrace(); }
     }
     
     public void startGame() {
-        // Reset snake
+        // Initialize snake length and direction
         bodyParts = 6;
         direction = 'R';
+        
         for (int i = 0; i < bodyParts; i++) {
             x[i] = 0;
             y[i] = 0;
@@ -49,13 +62,34 @@ public class GamePanel extends JPanel implements ActionListener {
         // Reset food and score
         foodX = -UNIT_SIZE;
         foodY = -UNIT_SIZE;
+        score = 0;
         
-        if (!customize) newFood();
+        if (!customize && !leaderboard) newFood();
         
         running = true;
         
         timer = new Timer(DELAY, this);
         timer.start();
+    }
+    
+    public void updateLeaderboard() throws IOException {
+        File fileS = new File("ScoreBoard.txt");
+        File fileN = new File("NameBoard.txt");
+        Scanner inputS = new Scanner(fileS);
+        Scanner inputN = new Scanner(fileN);
+        
+        if (beaten) {
+            PrintWriter writer = new PrintWriter(new FileWriter(fileS));
+            for (int score: scoreBoard) writer.print(score + " ");
+            beaten = false;
+            writer.close();
+        }
+        
+        // Read from leaderboard.txt
+        for (int i = 0; i < 10; i++) {
+            scoreBoard[i] = inputS.nextInt();
+            nameBoard[i] = inputN.nextLine();
+        }
     }
     
     public void newFood() {
@@ -89,7 +123,27 @@ public class GamePanel extends JPanel implements ActionListener {
         // Check if head touches boarders
         if (x[0] < 0 || x[0] >= SCREEN_WIDTH) running = false;
         if (y[0] < 0 || y[0] >= SCREEN_HEIGHT) running = false;
-        if (!running) timer.stop();
+        
+        if (!running) {
+            timer.stop();
+            
+            // Compare score with leaderboard
+            int temp = -1; // To hold score while score shifts
+            for (int i = 0; i < 10; i++) {
+                if (beaten == false && scoreBoard[i] < score){
+                    beaten = true;
+                    temp = scoreBoard[i];
+                    scoreBoard[i] = score;
+                } else if (beaten) {
+                    int replace = temp;
+                    temp = scoreBoard[i];
+                    scoreBoard[i] = replace;
+                }
+            }
+            
+            try { updateLeaderboard(); }
+            catch (IOException ioe) { ioe.printStackTrace(); }
+        }
     }
     
     public void draw(Graphics g) {
@@ -123,21 +177,50 @@ public class GamePanel extends JPanel implements ActionListener {
             
             g.setColor(Color.white);
             g.setFont(new Font("Arial", Font.BOLD, 20));
-            if (!customize) g.drawString("Score: " + score, 10, 20); // Draw score
+            if (!customize && !leaderboard) g.drawString("Score: " + score, 10, 20); // Draw score
             
             FontMetrics metrics = getFontMetrics(g.getFont());
-            if (customize) g.drawString("< 'space' to select and start >", (SCREEN_WIDTH - metrics.stringWidth("< 'space' to select and start >")) / 2, SCREEN_HEIGHT * 2 / 3);
+            if (customize) {
+                g.drawString("SPACE to select & start", (SCREEN_WIDTH - metrics.stringWidth("SPACE to select & start")) / 2, 400); 
+                g.drawString("<                                    >", (SCREEN_WIDTH - metrics.stringWidth("<                                    >")) / 2, SCREEN_HEIGHT / 2);
+            }
+            if (leaderboard) {
+                g.drawString("RANK", 250, 180);
+                g.drawString("NAME", 350, 180);
+                g.drawString("SCORE", 475, 180);
+                for (int i = 0; i < 10; i++) {
+                    int yPos = (205 + i * 25);
+                    String rank;
+                    String zero = "00";
+                    
+                    if (i == 0) rank = "ST";
+                    else if (i == 1) rank = "ND";
+                    else if (i == 2) rank = "RD";
+                    else rank = "TH";
+                    
+                    if (scoreBoard[i] > 10) zero = "0";
+                    else if (scoreBoard[i] >= 100) zero = "";
+                    
+                    g.drawString((i + 1) + rank, 250, yPos);
+                    g.drawString(nameBoard[i], 350, yPos);
+                    g.drawString(zero + scoreBoard[i], 495, yPos);
+                }
+                
+                g.drawString("SPACE to start", (SCREEN_WIDTH - metrics.stringWidth("SPACE to start")) / 2, 545);
+            }
             if (pause) g.drawString("Paused", (SCREEN_WIDTH - metrics.stringWidth("Paused")) / 2, SCREEN_HEIGHT / 2);
         }
             
+        // GameOver screen
         if (!running) {
             // Display score
             g.setColor(Color.white);
             g.setFont(new Font("Arial", Font.BOLD, 25));
             FontMetrics metrics1 = getFontMetrics(g.getFont());
             g.drawString("Score: " + score, (SCREEN_WIDTH - metrics1.stringWidth("Score: " + score)) / 2, SCREEN_HEIGHT / 3);
-            g.drawString("'space' to retry", (SCREEN_WIDTH - metrics1.stringWidth("'space' to retry")) / 2, SCREEN_HEIGHT * 2 / 3);
-            g.drawString("'enter' to customize", (SCREEN_WIDTH - metrics1.stringWidth("'enter' to customize")) / 2, SCREEN_HEIGHT * 2 / 3 + 25);
+            g.drawString("SPACE to retry", (SCREEN_WIDTH - metrics1.stringWidth("SPACE to retry")) / 2, 400);
+            g.drawString("ENTER to customize", (SCREEN_WIDTH - metrics1.stringWidth("ENTER to customize")) / 2, 425);
+            g.drawString("'L' to Leaderboard", (SCREEN_WIDTH - metrics1.stringWidth("'L' to Leaderboard")) / 2, 450);
             
             // Display Game Over text
             g.setColor(Color.red);
@@ -160,6 +243,14 @@ public class GamePanel extends JPanel implements ActionListener {
             if (y[0] == 325) direction = 'L';
             if (x[0] == 325 && direction != 'R') direction = 'U';
             if (y[0] == 225 && direction != 'D') direction = 'R';
+        }
+        
+        // Custom movement for leaderboard menu
+        if (leaderboard) {
+            if (x[0] == 575) direction = 'D';
+            if (y[0] == 450) direction = 'L';
+            if (x[0] == 200 && direction != 'R') direction = 'U';
+            if (y[0] == 125 && direction != 'D') direction = 'R';
         }
         
         // Move head
@@ -185,13 +276,13 @@ public class GamePanel extends JPanel implements ActionListener {
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g); // Clears display
-        draw(g);
+        draw(g); 
     }
     
     public class MyKeyAdapter extends KeyAdapter {
         @Override
         public void keyPressed(KeyEvent e) {
-            if (running && !customize) {
+            if (running && !customize && !leaderboard) {
                 switch (e.getKeyCode()) {
                     case KeyEvent.VK_LEFT -> { if (direction != 'R') direction = 'L'; }
                     case KeyEvent.VK_RIGHT -> { if (direction != 'L') direction = 'R'; }
@@ -219,11 +310,23 @@ public class GamePanel extends JPanel implements ActionListener {
                         startGame();
                     }
                 }
-            } else{
+            } else if (running && leaderboard) {
+                switch (e.getKeyCode()) {
+                    case KeyEvent.VK_SPACE -> {
+                        leaderboard = false;
+                        timer.stop();
+                        startGame();
+                    }
+                }
+            }else{
                 switch (e.getKeyCode()) {
                     case KeyEvent.VK_SPACE -> startGame();
                     case KeyEvent.VK_ENTER -> {
                         customize = true;
+                        startGame();
+                    }
+                    case KeyEvent.VK_L -> {
+                        leaderboard = true;
                         startGame();
                     }
                 }

@@ -1,7 +1,7 @@
 import javax.swing.*;
 
 public class SnakeGame extends JFrame {
-    public SnakeGame(){
+    public SnakeGame() {
         setTitle("Snake");
         setResizable(false);
         
