@@ -12,11 +12,22 @@ public class GamePanel extends JPanel implements ActionListener {
     private final int TOTAL_UNITS = SCREEN_WIDTH * SCREEN_HEIGHT / (UNIT_SIZE * UNIT_SIZE);
     private final int DELAY = 100; // Game speed (ms)
     
+    private String congratsOut;
+    private final String[] congrats = {
+                "Ssspectacular! You’ve slithered into the top ranks.",
+                "Hiss-tory has been made! You’re on the leaderboard!",
+                "Your snake leaves only defeated players in its trail!",
+                "The leaderboard just got a little more venomous!",
+                "You are scaling the food chain!",
+                "You came. You saw. You sss-scored!",
+                "Another snake bites the dust."
+            };
+    
     // Game scores
     private int score = 0;
     private int[] scoreBoard = new int[10];
+    private String name = ""; // For player name input
     private String[] nameBoard = new String[10];
-    private boolean beaten = false;
     
     // Snake variables
     private final int x[] = new int[TOTAL_UNITS];
@@ -37,6 +48,8 @@ public class GamePanel extends JPanel implements ActionListener {
     private boolean pause = false;
     private boolean customize = false;
     private boolean leaderboard = false;
+    private boolean loss = false;
+    private boolean beaten = false;
     
     private Timer timer;
     
@@ -83,10 +96,26 @@ public class GamePanel extends JPanel implements ActionListener {
         Scanner inputN = new Scanner(fileN);
         
         if (beaten) {
-            PrintWriter writer = new PrintWriter(new FileWriter(fileS));
-            for (int score: scoreBoard) writer.print(score + " ");
+            scoreBoard[9] = score;
+            nameBoard[9] = name;
+            for (int i = 8; i >= 0; i--) {
+                if (scoreBoard[i + 1] > scoreBoard[i]) {
+                    scoreBoard[i + 1] = scoreBoard[i];
+                    scoreBoard[i] = score;
+                    nameBoard[i + 1] = nameBoard[i];
+                    nameBoard[i] = name;
+                }
+            }
+            
             beaten = false;
-            writer.close();
+            
+            PrintWriter writer1 = new PrintWriter(new FileWriter(fileS));
+            for (int score: scoreBoard) writer1.print(score + " ");
+            writer1.close();
+            
+            PrintWriter writer2 = new PrintWriter(new FileWriter(fileN));
+            for (String name: nameBoard) writer2.println(name);
+            writer2.close();
         }
         
         // Read from leaderboard.txt
@@ -131,22 +160,16 @@ public class GamePanel extends JPanel implements ActionListener {
         if (!running) {
             reset();
             
-            // Compare score with leaderboard
-            int temp = -1; // To hold score while score shifts
-            for (int i = 0; i < 10; i++) {
-                if (beaten == false && scoreBoard[i] < score){
+            for (int i = 9; i >= 0; i--) {
+                if (score > scoreBoard[i]) {
+                    congratsOut = congrats[(int) (Math.random() * congrats.length)];
                     beaten = true;
-                    temp = scoreBoard[i];
-                    scoreBoard[i] = score;
-                } else if (beaten) {
-                    int replace = temp;
-                    temp = scoreBoard[i];
-                    scoreBoard[i] = replace;
+                    name = ""; // Clear name;
+                    break;
                 }
             }
             
-            try { updateLeaderboard(); }
-            catch (IOException ioe) { ioe.printStackTrace(); }
+            if (!beaten) loss = true;
         }
     }
     
@@ -183,7 +206,7 @@ public class GamePanel extends JPanel implements ActionListener {
         if (customize) {
             g.drawString("<                                    >", (SCREEN_WIDTH - metrics.stringWidth("<                                    >")) / 2, SCREEN_HEIGHT / 2);
             g.drawString("SPACE to start", (SCREEN_WIDTH - metrics.stringWidth("SPACE to start")) / 2, 400);
-            g.drawString("'L' to leaderboard", (SCREEN_WIDTH - metrics.stringWidth("'L' to leaderboard")) / 2, 425);
+            g.drawString("L to leaderboard", (SCREEN_WIDTH - metrics.stringWidth("L to leaderboard")) / 2, 425);
         }
         
         if (leaderboard) {
@@ -209,27 +232,47 @@ public class GamePanel extends JPanel implements ActionListener {
             }
             
             g.drawString("SPACE to start", (SCREEN_WIDTH - metrics.stringWidth("SPACE to start")) / 2, 520);
-            g.drawString("ENTER to customize", (SCREEN_WIDTH - metrics.stringWidth("ENTER to customize")) / 2, 545);
+            g.drawString("C to customize", (SCREEN_WIDTH - metrics.stringWidth("C to customize")) / 2, 545);
         }
         
         if (pause) g.drawString("Paused", (SCREEN_WIDTH - metrics.stringWidth("Paused")) / 2, SCREEN_HEIGHT / 2);
             
         // GameOver screen
-        if (!running && !customize && !leaderboard) {
+        if (loss) {
             // Display score
             g.setColor(Color.white);
             g.setFont(new Font("Arial", Font.BOLD, 25));
             FontMetrics metrics1 = getFontMetrics(g.getFont());
             g.drawString("Score: " + score, (SCREEN_WIDTH - metrics1.stringWidth("Score: " + score)) / 2, SCREEN_HEIGHT / 3);
             g.drawString("SPACE to retry", (SCREEN_WIDTH - metrics1.stringWidth("SPACE to retry")) / 2, 400);
-            g.drawString("ENTER to customize", (SCREEN_WIDTH - metrics1.stringWidth("ENTER to customize")) / 2, 425);
-            g.drawString("'L' to leaderboard", (SCREEN_WIDTH - metrics1.stringWidth("'L' to leaderboard")) / 2, 450);
+            g.drawString("C to customize", (SCREEN_WIDTH - metrics1.stringWidth("C to customize")) / 2, 425);
+            g.drawString("L to leaderboard", (SCREEN_WIDTH - metrics1.stringWidth("L to leaderboard")) / 2, 450);
             
             // Display Game Over text
             g.setColor(Color.red);
             g.setFont(new Font("Arial", Font.BOLD, 75));
             FontMetrics metrics2 = getFontMetrics(g.getFont());
             g.drawString("Game Over", (SCREEN_WIDTH - metrics2.stringWidth("Game Over")) / 2, SCREEN_HEIGHT / 2);
+        }
+        
+        if (beaten) {
+            g.setColor(Color.white);
+            g.setFont(new Font("Arial", Font.BOLD, 25));
+            FontMetrics metrics1 = getFontMetrics(g.getFont());
+            
+            g.drawString("Score : " + score, (SCREEN_WIDTH - metrics1.stringWidth("Score: " + score)) / 2, 125);
+            g.drawString(congratsOut, (SCREEN_WIDTH - metrics1.stringWidth(congratsOut)) / 2, 150);
+            g.drawString("ENTER to submit score", (SCREEN_WIDTH - metrics1.stringWidth("ENTER to submit score")) / 2, 450);
+            g.drawString("ESCAPE to discard score", (SCREEN_WIDTH - metrics1.stringWidth("ESCAPE to discard score")) / 2, 475);
+            
+            String nameOut;
+            if (name.length() != 6) nameOut = name + "_";
+            else nameOut = name;
+            
+            g.setColor(Color.green);
+            g.setFont(new Font("Arial", Font.BOLD, 65));
+            FontMetrics metrics2 = getFontMetrics(g.getFont());
+            g.drawString(nameOut,  (SCREEN_WIDTH - metrics2.stringWidth(nameOut)) / 2, 310);
         }
     }
     
@@ -279,9 +322,13 @@ public class GamePanel extends JPanel implements ActionListener {
             int[] X = {200, 575, 575, 200};
             int[] Y = {125, 125, 450, 450};
             setDirection(X, Y, whichCoor);
-        }else if (!running) {
+        }else if (loss) {
             int[] X = {150, 625, 625, 150};
             int[] Y = {100, 100, 475, 475};
+            setDirection(X, Y, whichCoor);
+        }else if (beaten) {
+            int[] X = {175, 600, 600, 175};
+            int[] Y = {225, 225, 325, 325};
             setDirection(X, Y, whichCoor);
         }
         
@@ -351,18 +398,63 @@ public class GamePanel extends JPanel implements ActionListener {
                         leaderboard = false;
                         startGame();
                     }
-                    case KeyEvent.VK_ENTER -> {
+                    case KeyEvent.VK_C -> {
                         leaderboard = false;
                         customize = true;
                     }
                 }
-            }else{
+            } else if (loss) {
                 switch (e.getKeyCode()) {
-                    case KeyEvent.VK_SPACE -> startGame();
-                    case KeyEvent.VK_ENTER -> {
+                    case KeyEvent.VK_SPACE -> {
+                        loss = false;
+                        startGame();
+                    }
+                    case KeyEvent.VK_C -> {
+                        loss = false;
                         customize = true;
                     }
                     case KeyEvent.VK_L -> {
+                        loss = false;
+                        leaderboard = true;
+                    }
+                }
+            } else if (beaten) {
+                switch (e.getKeyCode()) {
+                    case KeyEvent.VK_A -> { if (name.length() < 6) name += "A"; }
+                    case KeyEvent.VK_B -> { if (name.length() < 6) name += "B"; }
+                    case KeyEvent.VK_C -> { if (name.length() < 6) name += "C"; }
+                    case KeyEvent.VK_D -> { if (name.length() < 6) name += "D"; }
+                    case KeyEvent.VK_E -> { if (name.length() < 6) name += "E"; }
+                    case KeyEvent.VK_F -> { if (name.length() < 6) name += "F"; }
+                    case KeyEvent.VK_G -> { if (name.length() < 6) name += "G"; }
+                    case KeyEvent.VK_H -> { if (name.length() < 6) name += "H"; }
+                    case KeyEvent.VK_I -> { if (name.length() < 6) name += "I"; }
+                    case KeyEvent.VK_J -> { if (name.length() < 6) name += "J"; }
+                    case KeyEvent.VK_K -> { if (name.length() < 6) name += "K"; }
+                    case KeyEvent.VK_L -> { if (name.length() < 6) name += "L"; }
+                    case KeyEvent.VK_M -> { if (name.length() < 6) name += "M"; }
+                    case KeyEvent.VK_N -> { if (name.length() < 6) name += "N"; }
+                    case KeyEvent.VK_O -> { if (name.length() < 6) name += "O"; }
+                    case KeyEvent.VK_P -> { if (name.length() < 6) name += "P"; }
+                    case KeyEvent.VK_Q -> { if (name.length() < 6) name += "Q"; }
+                    case KeyEvent.VK_R -> { if (name.length() < 6) name += "R"; }
+                    case KeyEvent.VK_S -> { if (name.length() < 6) name += "S"; }
+                    case KeyEvent.VK_T -> { if (name.length() < 6) name += "T"; }
+                    case KeyEvent.VK_U -> { if (name.length() < 6) name += "U"; }
+                    case KeyEvent.VK_V -> { if (name.length() < 6) name += "V"; }
+                    case KeyEvent.VK_W -> { if (name.length() < 6) name += "W"; }
+                    case KeyEvent.VK_X -> { if (name.length() < 6) name += "X"; }
+                    case KeyEvent.VK_Y -> { if (name.length() < 6) name += "Y"; }
+                    case KeyEvent.VK_Z -> { if (name.length() < 6) name += "Z"; }
+                    
+                    case KeyEvent.VK_BACK_SPACE -> { if (name.length() > 0) name = name.substring(0, name.length() - 1); }
+                    case KeyEvent.VK_ESCAPE -> {
+                        beaten = false;
+                        customize = true;
+                    }
+                    case KeyEvent.VK_ENTER -> {
+                        try { updateLeaderboard(); }
+                        catch (IOException ioe) { ioe.printStackTrace(); }
                         leaderboard = true;
                     }
                 }
