@@ -36,6 +36,7 @@ public class GamePanel extends JPanel implements ActionListener {
     private int setX, setY; // For custom direction
     private int bodyParts; // Snake length
     private char direction; // 'U' = up, 'D' = down, 'L' = left, 'R' = right
+    private boolean directionChanged = false;
     private char colorList[] = {'R', 'G', 'B', 'Y', 'C', 'P', 'W'};
     private int color = 1;
     
@@ -44,6 +45,8 @@ public class GamePanel extends JPanel implements ActionListener {
     private int foodY;
     
     // Game state
+    private int menuOption = 0;
+    private boolean menu = false;
     private boolean running = false; 
     private boolean pause = false;
     private boolean customize = false;
@@ -61,10 +64,25 @@ public class GamePanel extends JPanel implements ActionListener {
         
         timer = new Timer(DELAY, this);
         timer.start();
-        startGame();
+        reset();
+        menu = true;
+        newFood();
         
         try { updateLeaderboard(); }
         catch (IOException ioe) { ioe.printStackTrace(); }
+    }
+    
+    public void menuManager() {
+        switch (menuOption) {
+            case 0 -> startGame();
+            case 1 -> customize = true;
+            case 2 -> leaderboard = true;
+        }
+        menu = false;
+        // Reset food
+        foodX = -UNIT_SIZE;
+        foodY = -UNIT_SIZE;
+        
     }
     
     public void startGame() {
@@ -84,7 +102,7 @@ public class GamePanel extends JPanel implements ActionListener {
             y[i] = 0;
         }
         
-        // Reset food and score
+        // Reset food
         foodX = -UNIT_SIZE;
         foodY = -UNIT_SIZE;
     }
@@ -134,15 +152,27 @@ public class GamePanel extends JPanel implements ActionListener {
     
     public void newFood() {
         do{
-            foodX = (int) (Math.random() * (SCREEN_WIDTH / UNIT_SIZE)) * UNIT_SIZE;
-            foodY = (int) (Math.random() * (SCREEN_HEIGHT / UNIT_SIZE)) * UNIT_SIZE;
+            if (running) {
+                foodX = (int) (Math.random() * (SCREEN_WIDTH / UNIT_SIZE)) * UNIT_SIZE;
+                foodY = (int) (Math.random() * (SCREEN_HEIGHT / UNIT_SIZE)) * UNIT_SIZE;
+            }
+            else if (menu) {
+                foodX = (int) (Math.random() * (375 / UNIT_SIZE)) * UNIT_SIZE + 300;
+                foodY = (int) (Math.random() * (375 / UNIT_SIZE)) * UNIT_SIZE + 100;
+            }
+            
         } while (checkFoodSpawn());
     }
     
     public void checkFood() {
         if (x[0] == foodX && y[0] == foodY) {
-            bodyParts++;
-            score++;
+            if (running) {
+                bodyParts++;
+                score++;
+            }
+            else if (menu) {
+                color = (int )(Math.random() * 6);
+            }
             newFood();
         }
     }
@@ -201,6 +231,16 @@ public class GamePanel extends JPanel implements ActionListener {
         g.setFont(new Font("Arial", Font.BOLD, 20));
         
         if (running) g.drawString("Score: " + score, 10, 20); // Draw score
+        
+        if (menu) {
+            g.setFont(new Font("Arial", Font.BOLD, 25));
+            g.drawString("Start Game", 85, 246);
+            g.drawString("Customize", 85, 296);
+            g.drawString("Leaderboard", 85, 346);
+            if (menuOption == 0) g.fillRect(50, 225, UNIT_SIZE, UNIT_SIZE);
+            else if (menuOption == 1) g.fillRect(50, 275, UNIT_SIZE, UNIT_SIZE);
+            else if (menuOption == 2) g.fillRect(50, 325, UNIT_SIZE, UNIT_SIZE);
+        }
         
         FontMetrics metrics = getFontMetrics(g.getFont());
         if (customize) {
@@ -298,6 +338,24 @@ public class GamePanel extends JPanel implements ActionListener {
         }
         
         if (Math.abs(setX - x[0]) > Math.abs(setY - y[0])) {
+            if ((setX - x[0]) > 0) {
+                direction = 'R';
+            }
+            else {
+                direction = 'L';
+            }
+        } else {
+            if ((setY - y[0]) > 0) {
+                direction = 'D';
+            }
+            else {
+                direction = 'U';
+            }
+        }
+    }
+    
+    public void setDirection() {
+        if (Math.abs(setX - x[0]) > Math.abs(setY - y[0])) {
             if ((setX - x[0]) > 0) direction = 'R';
             else direction = 'L';
         } else {
@@ -314,7 +372,11 @@ public class GamePanel extends JPanel implements ActionListener {
         }
         
         // Custom movements
-        if (customize){
+        if (menu) {
+            setX = foodX;
+            setY = foodY;
+            setDirection();
+        }else if (customize){
             int[] X = {325, 450, 450, 325};
             int[] Y = {225, 225, 325, 325};
             setDirection(X, Y, whichCoor);
@@ -344,11 +406,14 @@ public class GamePanel extends JPanel implements ActionListener {
     @Override
     public void actionPerformed(ActionEvent e) {
         // This will run every DELAY milliseconds
-        if (!pause) move();
-        if (running){
-            checkFood();
+        if (!pause) {
+            move();
+            directionChanged = false;
+        }
+        if (running) {
             checkCollisions(); 
         }
+        checkFood();
         repaint(); // Triggers the painComponent method
     }
     
@@ -361,12 +426,44 @@ public class GamePanel extends JPanel implements ActionListener {
     public class MyKeyAdapter extends KeyAdapter {
         @Override
         public void keyPressed(KeyEvent e) {
+            if (menu) {
+                switch (e.getKeyCode()) {
+                    case KeyEvent.VK_ENTER -> menuManager();
+                    case KeyEvent.VK_UP -> {
+                        if (menuOption != 0) menuOption--;
+                    }
+                    case KeyEvent.VK_DOWN -> {
+                        if (menuOption != 2) menuOption++;
+                    }
+                    
+                }
+            }
             if (running) {
                 switch (e.getKeyCode()) {
-                    case KeyEvent.VK_LEFT -> { if (direction != 'R') direction = 'L'; }
-                    case KeyEvent.VK_RIGHT -> { if (direction != 'L') direction = 'R'; }
-                    case KeyEvent.VK_UP -> { if (direction != 'D') direction = 'U'; }
-                    case KeyEvent.VK_DOWN -> { if (direction != 'U') direction = 'D'; }
+                    case KeyEvent.VK_LEFT -> { 
+                        if (direction != 'R' && !directionChanged) {
+                            direction = 'L';
+                            directionChanged = true;
+                        }
+                    }
+                    case KeyEvent.VK_RIGHT -> { 
+                        if (direction != 'L' && !directionChanged) {
+                            direction = 'R'; 
+                            directionChanged = true;
+                        }
+                    }
+                    case KeyEvent.VK_UP -> { 
+                        if (direction != 'D' && !directionChanged) {
+                            direction = 'U'; 
+                            directionChanged = true;
+                        }
+                    }
+                    case KeyEvent.VK_DOWN -> { 
+                        if (direction != 'U' && !directionChanged) {
+                            direction = 'D';
+                            directionChanged = true;
+                        } 
+                    }
                     
                     case KeyEvent.VK_SPACE -> {
                         if (pause) pause = false;
