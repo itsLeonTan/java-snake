@@ -10,7 +10,7 @@ public class GamePanel extends JPanel implements ActionListener {
     private final int SCREEN_HEIGHT = 600;
     private final int UNIT_SIZE = 25; // Size of each grid square
     private final int TOTAL_UNITS = SCREEN_WIDTH * SCREEN_HEIGHT / (UNIT_SIZE * UNIT_SIZE);
-    private final int DELAY = 100; // Game speed (ms)
+    private int delay = 100; // Game speed (ms)
     
     private String congratsOut;
     private final String[] congrats = {
@@ -41,10 +41,11 @@ public class GamePanel extends JPanel implements ActionListener {
     private int color = 1;
     
     // Food variables
-    private int foodX;
-    private int foodY;
+    private int[] foodX = new int[10];
+    private int[] foodY = new int[10];
     
     // Game state
+    private char mods = 'C';
     private int menuOption = 0;
     private boolean menu = false;
     private boolean running = false; 
@@ -62,7 +63,7 @@ public class GamePanel extends JPanel implements ActionListener {
         setFocusable(true); // Needed for keyboard input
         addKeyListener(new MyKeyAdapter());
         
-        timer = new Timer(DELAY, this);
+        timer = new Timer(delay, this);
         timer.start();
         reset();
         menu = true;
@@ -73,38 +74,63 @@ public class GamePanel extends JPanel implements ActionListener {
     }
     
     public void menuManager() {
-        switch (menuOption) {
-            case 0 -> startGame();
-            case 1 -> customize = true;
-            case 2 -> leaderboard = true;
-        }
         menu = false;
-        // Reset food
-        foodX = -UNIT_SIZE;
-        foodY = -UNIT_SIZE;
+        // Reset just food
+        for (int j = 0; j < foodX.length; j++) {
+            foodX[j] = -UNIT_SIZE;
+            foodY[j] = -UNIT_SIZE;   
+        }
         
+        switch (menuOption) {
+            case 0 -> {
+                mods = 'C';
+                startGame();
+            }
+            case 1 -> {
+                mods = 'F';
+                startGame();
+            }
+            case 2 -> {
+                mods = 'S';
+                startGame();
+            }
+            case 3 -> customize = true;
+            case 4 -> leaderboard = true;
+        }
     }
     
     public void startGame() {
         reset();
         score = 0;
         running = true;
+        if (mods == 'S') {
+            timerChange(150);
+        }
         if (!customize && !leaderboard) newFood();
+    }
+    
+    public void timerChange(int change) {
+        delay = change;
+        timer.stop();
+        timer = new Timer(delay, this);
+        timer.start();
     }
     
     public void reset() {
         // Initialize snake length and direction
         bodyParts = 6;
         direction = 'R';
-        
         for (int i = 0; i < bodyParts; i++) {
             x[i] = 0;
             y[i] = 0;
         }
+        // Reset all food
+        for (int j = 0; j < foodX.length; j++) {
+            foodX[j] = -UNIT_SIZE;
+            foodY[j] = -UNIT_SIZE;   
+        }
         
-        // Reset food
-        foodX = -UNIT_SIZE;
-        foodY = -UNIT_SIZE;
+        timerChange(100);
     }
     
     public void updateLeaderboard() throws IOException {
@@ -145,62 +171,85 @@ public class GamePanel extends JPanel implements ActionListener {
     
     public boolean checkFoodSpawn() {
         for (int i = 0; i < bodyParts; i++) {
-            if (x[i] == foodX && y[i] == foodY) return true;
+            if (x[i] == foodX[0] && y[i] == foodY[0]) return true;
+        }
+        for (int j = 1; j < foodX.length; j++) {
+            if (foodX[j] == foodX[0] && foodY[j] == foodY[0]) return true;
         }
         return false;
+    }
+    
+    public void newFood(int index) {
+        do{
+            foodX[index] = (int) (Math.random() * (SCREEN_WIDTH / UNIT_SIZE)) * UNIT_SIZE;
+            foodY[index] = (int) (Math.random() * (SCREEN_HEIGHT / UNIT_SIZE)) * UNIT_SIZE;            
+        } while (checkFoodSpawn());
     }
     
     public void newFood() {
         do{
             if (running) {
-                foodX = (int) (Math.random() * (SCREEN_WIDTH / UNIT_SIZE)) * UNIT_SIZE;
-                foodY = (int) (Math.random() * (SCREEN_HEIGHT / UNIT_SIZE)) * UNIT_SIZE;
+                foodX[0] = (int) (Math.random() * (SCREEN_WIDTH / UNIT_SIZE)) * UNIT_SIZE;
+                foodY[0] = (int) (Math.random() * (SCREEN_HEIGHT / UNIT_SIZE)) * UNIT_SIZE;
             }
             else if (menu) {
-                foodX = (int) (Math.random() * (375 / UNIT_SIZE)) * UNIT_SIZE + 300;
-                foodY = (int) (Math.random() * (375 / UNIT_SIZE)) * UNIT_SIZE + 100;
+                foodX[0] = (int) (Math.random() * (375 / UNIT_SIZE)) * UNIT_SIZE + 300;
+                foodY[0] = (int) (Math.random() * (375 / UNIT_SIZE)) * UNIT_SIZE + 100;
             }
             
         } while (checkFoodSpawn());
+        
+        if (mods == 'F') {
+            for (int i = 1; i < foodX.length; i++) {
+                do {
+                    foodX[i] = (int) (Math.random() * (SCREEN_WIDTH / UNIT_SIZE)) * UNIT_SIZE;
+                    foodY[i] = (int) (Math.random() * (SCREEN_HEIGHT / UNIT_SIZE)) * UNIT_SIZE;
+                } while (checkFoodSpawn());
+            }
+        }
     }
     
     public void checkFood() {
-        if (x[0] == foodX && y[0] == foodY) {
+        if (x[0] == foodX[0] && y[0] == foodY[0]) {
             if (running) {
                 bodyParts++;
                 score++;
+                newFood(0);
+                if (mods == 'S') timerChange(delay - 5);
             }
             else if (menu) {
-                color = (int )(Math.random() * 6);
+                color = (int)(Math.random() * 6);
+                newFood();
             }
-            newFood();
+        }
+        if (mods == 'F') {
+            for (int i = 1; i < foodX.length; i++) {
+                if (x[0] == foodX[i] && y[0] == foodY[i]) {
+                    bodyParts++;
+                    score++;
+                    newFood(i);
+                }
+            }
         }
     }
     
-    public void checkCollisions() {
+    public boolean checkCollisions(int menuX, int menuY) {
         // Check if head collides with body
         for (int i = bodyParts; i > 0; i--) {
-            if((x[0] == x[i]) && (y[0] == y[i])) running = false;
+            if((menuX == x[i]) && (menuY == y[i])) return true;
         }
-        
+        return false;
+    }
+    
+    public boolean checkCollisions() {
+        // Check if head collides with body
+        for (int i = bodyParts; i > 0; i--) {
+            if((x[0] == x[i]) && (y[0] == y[i])) return true;
+        }
         // Check if head touches boarders
-        if (x[0] < 0 || x[0] >= SCREEN_WIDTH) running = false;
-        if (y[0] < 0 || y[0] >= SCREEN_HEIGHT) running = false;
-        
-        if (!running) {
-            reset();
-            
-            for (int i = 9; i >= 0; i--) {
-                if (score > scoreBoard[i]) {
-                    congratsOut = congrats[(int) (Math.random() * congrats.length)];
-                    beaten = true;
-                    name = ""; // Clear name;
-                    break;
-                }
-            }
-            
-            if (!beaten) loss = true;
-        }
+        if (x[0] < 0 || x[0] >= SCREEN_WIDTH) return true;
+        if (y[0] < 0 || y[0] >= SCREEN_HEIGHT) return true;
+        return false;
     }
     
     public void draw(Graphics g) {
@@ -212,7 +261,10 @@ public class GamePanel extends JPanel implements ActionListener {
         
         // Draw food
         g.setColor(Color.red);
-        g.fillOval(foodX, foodY, UNIT_SIZE, UNIT_SIZE);
+        g.fillOval(foodX[0], foodY[0], UNIT_SIZE, UNIT_SIZE);
+        if (mods == 'F') {
+            for (int i = 1; i < foodX.length; i++) g.fillOval(foodX[i], foodY[i], UNIT_SIZE, UNIT_SIZE);
+        }
         
         // Draw snake
         for (int i = 0; i < bodyParts; i++) {
@@ -234,12 +286,16 @@ public class GamePanel extends JPanel implements ActionListener {
         
         if (menu) {
             g.setFont(new Font("Arial", Font.BOLD, 25));
-            g.drawString("Start Game", 85, 246);
-            g.drawString("Customize", 85, 296);
-            g.drawString("Leaderboard", 85, 346);
-            if (menuOption == 0) g.fillRect(50, 225, UNIT_SIZE, UNIT_SIZE);
-            else if (menuOption == 1) g.fillRect(50, 275, UNIT_SIZE, UNIT_SIZE);
-            else if (menuOption == 2) g.fillRect(50, 325, UNIT_SIZE, UNIT_SIZE);
+            g.drawString("Classic", 85, 196);
+            g.drawString("Frenzy", 85, 246);
+            g.drawString("Speed Run", 85, 296);
+            g.drawString("Customize", 85, 346);
+            g.drawString("Leaderboard", 85, 396);
+            if (menuOption == 0) g.drawString(">", 60, 196);
+            else if (menuOption == 1) g.drawString(">", 60, 246);
+            else if (menuOption == 2) g.drawString(">", 60, 296);
+            else if (menuOption == 3) g.drawString(">", 60, 346);
+            else if (menuOption == 4) g.drawString(">", 60, 396);
         }
         
         FontMetrics metrics = getFontMetrics(g.getFont());
@@ -247,14 +303,15 @@ public class GamePanel extends JPanel implements ActionListener {
             g.drawString("<                                    >", (SCREEN_WIDTH - metrics.stringWidth("<                                    >")) / 2, SCREEN_HEIGHT / 2);
             g.drawString("SPACE to start", (SCREEN_WIDTH - metrics.stringWidth("SPACE to start")) / 2, 400);
             g.drawString("L to leaderboard", (SCREEN_WIDTH - metrics.stringWidth("L to leaderboard")) / 2, 425);
+            g.drawString("ESCAPE to main menu", (SCREEN_WIDTH - metrics.stringWidth("ESCAPE to main menu")) / 2, 450);
         }
         
         if (leaderboard) {
-            g.drawString("RANK", 250, 180);
-            g.drawString("NAME", 350, 180);
-            g.drawString("SCORE", 475, 180);
+            g.drawString("RANK", 250, 155);
+            g.drawString("NAME", 350, 155);
+            g.drawString("SCORE", 475, 155);
             for (int i = 0; i < 10; i++) {
-                int yPos = (205 + i * 25);
+                int yPos = (180 + i * 25);
                 String rank;
                 String zero = "00";
                 
@@ -271,8 +328,9 @@ public class GamePanel extends JPanel implements ActionListener {
                 g.drawString(zero + scoreBoard[i], 495, yPos);
             }
             
-            g.drawString("SPACE to start", (SCREEN_WIDTH - metrics.stringWidth("SPACE to start")) / 2, 520);
-            g.drawString("C to customize", (SCREEN_WIDTH - metrics.stringWidth("C to customize")) / 2, 545);
+            g.drawString("SPACE to start", (SCREEN_WIDTH - metrics.stringWidth("SPACE to start")) / 2, 495);
+            g.drawString("C to customize", (SCREEN_WIDTH - metrics.stringWidth("C to customize")) / 2, 520);
+            g.drawString("ESCAPE to main menu", (SCREEN_WIDTH - metrics.stringWidth("ESCAPE to main menu")) / 2, 545);
         }
         
         if (pause) g.drawString("Paused", (SCREEN_WIDTH - metrics.stringWidth("Paused")) / 2, SCREEN_HEIGHT / 2);
@@ -316,7 +374,41 @@ public class GamePanel extends JPanel implements ActionListener {
         }
     }
     
-    public void setDirection(int[] X, int[] Y, boolean[] Coor) {
+    public void setDirection() {
+        if (Math.abs(setX - x[0]) > Math.abs(setY - y[0])) {
+            if ((setX - x[0]) > 0) {
+                if (!checkCollisions(x[0] + UNIT_SIZE, y[0])) direction = 'R';
+                else {
+                    if (Math.random() >= 0.2) direction = 'U';
+                    else direction = 'L';
+                }
+            }
+            else {
+                if (!checkCollisions(x[0] - UNIT_SIZE, y[0])) direction = 'L';
+                else {
+                    if (Math.random() >= 0.2) direction = 'U';
+                    else direction = 'R';
+                }
+            }
+        } else {
+            if ((setY - y[0]) > 0) {
+                if (!checkCollisions(x[0], y[0] + UNIT_SIZE)) direction = 'D';
+                else {
+                    if (Math.random() >= 0.5) direction = 'R';
+                    else direction = 'L';
+                }
+            }
+            else {
+                if (!checkCollisions(x[0], y[0] - UNIT_SIZE)) direction = 'U';
+                else {
+                    if (Math.random() >= 0.5) direction = 'R';
+                    else direction = 'L';
+                }
+            }
+        }
+    }
+    
+    public void calculateDirection(int[] X, int[] Y, boolean[] Coor) {
         for (int i = 0; i < 4; i++) {
             if (Coor[i]) {
                 setX = X[i];
@@ -336,32 +428,7 @@ public class GamePanel extends JPanel implements ActionListener {
                 }
             }
         }
-        
-        if (Math.abs(setX - x[0]) > Math.abs(setY - y[0])) {
-            if ((setX - x[0]) > 0) {
-                direction = 'R';
-            }
-            else {
-                direction = 'L';
-            }
-        } else {
-            if ((setY - y[0]) > 0) {
-                direction = 'D';
-            }
-            else {
-                direction = 'U';
-            }
-        }
-    }
-    
-    public void setDirection() {
-        if (Math.abs(setX - x[0]) > Math.abs(setY - y[0])) {
-            if ((setX - x[0]) > 0) direction = 'R';
-            else direction = 'L';
-        } else {
-            if ((setY - y[0]) > 0) direction = 'D';
-            else direction = 'U';
-        }
+        setDirection();
     }
     
     public void move(){
@@ -373,25 +440,25 @@ public class GamePanel extends JPanel implements ActionListener {
         
         // Custom movements
         if (menu) {
-            setX = foodX;
-            setY = foodY;
+            setX = foodX[0];
+            setY = foodY[0];
             setDirection();
         }else if (customize){
             int[] X = {325, 450, 450, 325};
             int[] Y = {225, 225, 325, 325};
-            setDirection(X, Y, whichCoor);
+            calculateDirection(X, Y, whichCoor);
         }else if (leaderboard) {
             int[] X = {200, 575, 575, 200};
-            int[] Y = {125, 125, 450, 450};
-            setDirection(X, Y, whichCoor);
+            int[] Y = {100, 100, 425, 425};
+            calculateDirection(X, Y, whichCoor);
         }else if (loss) {
             int[] X = {150, 625, 625, 150};
             int[] Y = {100, 100, 475, 475};
-            setDirection(X, Y, whichCoor);
+            calculateDirection(X, Y, whichCoor);
         }else if (beaten) {
             int[] X = {175, 600, 600, 175};
             int[] Y = {225, 225, 325, 325};
-            setDirection(X, Y, whichCoor);
+            calculateDirection(X, Y, whichCoor);
         }
         
         // Move head
@@ -411,7 +478,24 @@ public class GamePanel extends JPanel implements ActionListener {
             directionChanged = false;
         }
         if (running) {
-            checkCollisions(); 
+            if (checkCollisions()) {
+                running = false;
+                loss = true;
+                reset();
+                
+                if (mods == 'C') {
+                    for (int i = 9; i >= 0; i--) {
+                        if (score > scoreBoard[i]) {
+                            congratsOut = congrats[(int) (Math.random() * congrats.length)];
+                            beaten = true;
+                            loss = false;
+                            name = ""; // Clear name;
+                            break;
+                        }
+                    }
+                }
+                mods = 'C';
+            }
         }
         checkFood();
         repaint(); // Triggers the painComponent method
@@ -433,7 +517,7 @@ public class GamePanel extends JPanel implements ActionListener {
                         if (menuOption != 0) menuOption--;
                     }
                     case KeyEvent.VK_DOWN -> {
-                        if (menuOption != 2) menuOption++;
+                        if (menuOption != 4) menuOption++;
                     }
                     
                 }
@@ -488,6 +572,11 @@ public class GamePanel extends JPanel implements ActionListener {
                         customize = false;
                         leaderboard = true;
                     }
+                    case KeyEvent.VK_ESCAPE -> {
+                        customize = false;
+                        menu = true;
+                        newFood();
+                    }
                 }
             } else if (leaderboard) {
                 switch (e.getKeyCode()) {
@@ -498,6 +587,11 @@ public class GamePanel extends JPanel implements ActionListener {
                     case KeyEvent.VK_C -> {
                         leaderboard = false;
                         customize = true;
+                    }
+                    case KeyEvent.VK_ESCAPE -> {
+                        leaderboard = false;
+                        menu = true;
+                        newFood();
                     }
                 }
             } else if (loss) {
@@ -513,6 +607,11 @@ public class GamePanel extends JPanel implements ActionListener {
                     case KeyEvent.VK_L -> {
                         loss = false;
                         leaderboard = true;
+                    }
+                    case KeyEvent.VK_ESCAPE -> {
+                        loss = false;
+                        menu = true;
+                        newFood();
                     }
                 }
             } else if (beaten) {
@@ -547,7 +646,8 @@ public class GamePanel extends JPanel implements ActionListener {
                     case KeyEvent.VK_BACK_SPACE -> { if (name.length() > 0) name = name.substring(0, name.length() - 1); }
                     case KeyEvent.VK_ESCAPE -> {
                         beaten = false;
-                        customize = true;
+                        menu = true;
+                        newFood();
                     }
                     case KeyEvent.VK_ENTER -> {
                         try { updateLeaderboard(); }
