@@ -1,9 +1,8 @@
-import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
-
 import java.io.*;
 import java.util.Scanner;
+import javax.swing.*;
 
 public class GamePanel extends JPanel implements ActionListener {
     private final static int SCREEN_WIDTH = 800;
@@ -20,8 +19,8 @@ public class GamePanel extends JPanel implements ActionListener {
     
     private String congratsOut;
     private final String[] congrats = {
-                "Ssspectacular! You’ve slithered into the top ranks.",
-                "Hiss-tory has been made! You’re on the leaderboard!",
+                "Ssspectacular! You've slithered into the top ranks.",
+                "Hiss-tory has been made! You're on the leaderboard!",
                 "Your snake leaves only defeated players in its trail!",
                 "The leaderboard just got a little more venomous!",
                 "You are scaling the food chain!",
@@ -78,7 +77,7 @@ public class GamePanel extends JPanel implements ActionListener {
         food.newFood();
         
         try { updateLeaderboard(); }
-        catch (IOException ioe) { ioe.printStackTrace(); }
+        catch (IOException ioe) { ioe.printStackTrace(); } // Initial leaderboard load, but can create silent error if no file found.
     }
     
     public void menuManager() {
@@ -120,14 +119,14 @@ public class GamePanel extends JPanel implements ActionListener {
         timer.start();
     }
     
-    public void reset() {
+    public final void reset() {
         direction = 'R';
         snake.resetSnake();
         food.resetFood();
         timerChange(100);
     }
     
-    public void updateLeaderboard() throws IOException {
+    public final void updateLeaderboard() throws IOException {
         File fileS = new File("ScoreBoard.txt");
         File fileN = new File("NameBoard.txt");
         Scanner inputS = new Scanner(fileS);
@@ -148,11 +147,11 @@ public class GamePanel extends JPanel implements ActionListener {
             beaten = false;
             
             PrintWriter writer1 = new PrintWriter(new FileWriter(fileS));
-            for (int score: scoreBoard) writer1.print(score + " ");
+            for (int s: scoreBoard) writer1.print(s + " ");
             writer1.close();
             
             PrintWriter writer2 = new PrintWriter(new FileWriter(fileN));
-            for (String name: nameBoard) writer2.println(name);
+            for (String n: nameBoard) writer2.println(n);
             writer2.close();
         }
         
@@ -161,12 +160,14 @@ public class GamePanel extends JPanel implements ActionListener {
             scoreBoard[i] = inputS.nextInt();
             nameBoard[i] = inputN.nextLine();
         }
+        inputS.close();
+        inputN.close();
     }
     
     public void checkScoring() {
-        if (snake.getSnakeX(0) == food.getFoodX(0) && snake.getSnakeY(0) == food.getFoodY(0)) {
+        if (Snake.getSnakeX(0) == food.getFoodX(0) && Snake.getSnakeY(0) == food.getFoodY(0)) {
             if (running) {
-                snake.setBodyParts(snake.getBodyParts() + 1);
+                Snake.setBodyParts(Snake.getBodyParts() + 1);
                 score++;
                 food.newFood(0);
                 if (mods == 'S') timerChange(delay - 5);
@@ -179,8 +180,8 @@ public class GamePanel extends JPanel implements ActionListener {
         if (mods == 'F') {
             // Food array length set at 10 here. PROBLEMATIC.
             for (int i = 1; i < 10; i++) {
-                if (snake.getSnakeX(0) == food.getFoodX(i) && snake.getSnakeY(0) == food.getFoodY(i)) {
-                    snake.setBodyParts(snake.getBodyParts() + 1);
+                if (Snake.getSnakeX(0) == food.getFoodX(i) && Snake.getSnakeY(0) == food.getFoodY(i)) {
+                    Snake.setBodyParts(Snake.getBodyParts() + 1);
                     score++;
                     food.newFood(i);
                 }
@@ -204,16 +205,18 @@ public class GamePanel extends JPanel implements ActionListener {
         }
         
         // Draw snake
-        for (int i = 0; i < snake.getBodyParts(); i++) {
-            int gradient = 255 - (i * 200 / snake.getBodyParts());
-            if (colorList[color] == 'R') g.setColor(new Color(gradient, 0, 0));
-            else if (colorList[color] == 'G') g.setColor(new Color(0, gradient, 0));
-            else if (colorList[color] == 'B') g.setColor(new Color(0, 0, gradient));
-            else if (colorList[color] == 'Y') g.setColor(new Color(gradient, gradient, 0));
-            else if (colorList[color] == 'C') g.setColor(new Color(0, gradient, gradient));
-            else if (colorList[color] == 'P') g.setColor(new Color(gradient, 0, gradient));
-            else if (colorList[color] == 'W') g.setColor(new Color(gradient, gradient, gradient));
-            g.fillRect(snake.getSnakeX(i), snake.getSnakeY(i), UNIT_SIZE, UNIT_SIZE);
+        for (int i = 0; i < Snake.getBodyParts(); i++) {
+            int gradient = 255 - (i * 200 / Snake.getBodyParts());
+            switch (colorList[color]) {
+                case 'R' -> g.setColor(new Color(gradient, 0, 0));
+                case 'G' -> g.setColor(new Color(0, gradient, 0));
+                case 'B' -> g.setColor(new Color(0, 0, gradient));
+                case 'Y' -> g.setColor(new Color(gradient, gradient, 0));
+                case 'C' -> g.setColor(new Color(0, gradient, gradient));
+                case 'P' -> g.setColor(new Color(gradient, 0, gradient));
+                case 'W' -> g.setColor(new Color(gradient, gradient, gradient));
+            }
+            g.fillRect(Snake.getSnakeX(i), Snake.getSnakeY(i), UNIT_SIZE, UNIT_SIZE);
         }
         
         g.setColor(Color.white);
@@ -228,11 +231,13 @@ public class GamePanel extends JPanel implements ActionListener {
             g.drawString("Speed Run", 85, 296);
             g.drawString("Customize", 85, 346);
             g.drawString("Leaderboard", 85, 396);
-            if (menuOption == 0) g.drawString(">", 60, 196);
-            else if (menuOption == 1) g.drawString(">", 60, 246);
-            else if (menuOption == 2) g.drawString(">", 60, 296);
-            else if (menuOption == 3) g.drawString(">", 60, 346);
-            else if (menuOption == 4) g.drawString(">", 60, 396);
+            switch (menuOption) {
+                case 0 -> g.drawString(">", 60, 196);
+                case 1 -> g.drawString(">", 60, 246);
+                case 2 -> g.drawString(">", 60, 296);
+                case 3 -> g.drawString(">", 60, 346);
+                case 4 -> g.drawString(">", 60, 396);
+            }
         }
         
         FontMetrics metrics = getFontMetrics(g.getFont());
@@ -252,10 +257,12 @@ public class GamePanel extends JPanel implements ActionListener {
                 String rank;
                 String zero = "00";
                 
-                if (i == 0) rank = "ST";
-                else if (i == 1) rank = "ND";
-                else if (i == 2) rank = "RD";
-                else rank = "TH";
+                switch (i) {
+                    case 0 -> rank = "ST";
+                    case 1 -> rank = "ND";
+                    case 2 -> rank = "RD";
+                    default -> rank = "TH";
+                }
                 
                 if (scoreBoard[i] >= 10) zero = "0";
                 if (scoreBoard[i] >= 100) zero = "";
@@ -312,31 +319,31 @@ public class GamePanel extends JPanel implements ActionListener {
     }
     
     public void setDirection() {
-        if (Math.abs(setX - snake.getSnakeX(0)) > Math.abs(setY - snake.getSnakeY(0))) {
-            if ((setX - snake.getSnakeX(0)) > 0) {
-                if (!snake.checkCollisions(snake.getSnakeX(0) + UNIT_SIZE, snake.getSnakeY(0))) direction = 'R';
+        if (Math.abs(setX - Snake.getSnakeX(0)) > Math.abs(setY - Snake.getSnakeY(0))) {
+            if ((setX - Snake.getSnakeX(0)) > 0) {
+                if (!snake.checkCollisions(Snake.getSnakeX(0) + UNIT_SIZE, Snake.getSnakeY(0))) direction = 'R';
                 else {
                     if (Math.random() >= 0.2) direction = 'U';
                     else direction = 'L';
                 }
             }
             else {
-                if (!snake.checkCollisions(snake.getSnakeX(0) - UNIT_SIZE, snake.getSnakeY(0))) direction = 'L';
+                if (!snake.checkCollisions(Snake.getSnakeX(0) - UNIT_SIZE, Snake.getSnakeY(0))) direction = 'L';
                 else {
                     if (Math.random() >= 0.2) direction = 'U';
                     else direction = 'R';
                 }
             }
         } else {
-            if ((setY - snake.getSnakeY(0)) > 0) {
-                if (!snake.checkCollisions(snake.getSnakeX(0), snake.getSnakeY(0) + UNIT_SIZE)) direction = 'D';
+            if ((setY - Snake.getSnakeY(0)) > 0) {
+                if (!snake.checkCollisions(Snake.getSnakeX(0), Snake.getSnakeY(0) + UNIT_SIZE)) direction = 'D';
                 else {
                     if (Math.random() >= 0.5) direction = 'R';
                     else direction = 'L';
                 }
             }
             else {
-                if (!snake.checkCollisions(snake.getSnakeX(0), snake.getSnakeY(0) - UNIT_SIZE)) direction = 'U';
+                if (!snake.checkCollisions(Snake.getSnakeX(0), Snake.getSnakeY(0) - UNIT_SIZE)) direction = 'U';
                 else {
                     if (Math.random() >= 0.5) direction = 'R';
                     else direction = 'L';
@@ -351,10 +358,10 @@ public class GamePanel extends JPanel implements ActionListener {
                 setX = X[i];
                 setY = Y[i];
             }
-            if (snake.getSnakeX(0) == X[i] && snake.getSnakeY(0) == Y[i]) {
+            if (Snake.getSnakeX(0) == X[i] && Snake.getSnakeY(0) == Y[i]) {
                 if (i == 3 && Coor[3]) {
-                    setX = snake.getSnakeX(0);
-                    setY = snake.getSnakeY(0);
+                    setX = Snake.getSnakeX(0);
+                    setY = Snake.getSnakeY(0);
                     whichCoor[3] = false;
                     whichCoor[0] = true;
                 } else if (Coor[i]) {
@@ -474,10 +481,7 @@ public class GamePanel extends JPanel implements ActionListener {
                         } 
                     }
                     
-                    case KeyEvent.VK_SPACE -> {
-                        if (pause) pause = false;
-                        else pause = true;
-                    }
+                    case KeyEvent.VK_SPACE -> pause = !pause;
                 }
             } else if (customize) {
                 switch (e.getKeyCode()) {
@@ -541,34 +545,23 @@ public class GamePanel extends JPanel implements ActionListener {
                 }
             } else if (beaten) {
                 switch (e.getKeyCode()) {
-                    case KeyEvent.VK_A -> { if (name.length() < 6) name += "A"; }
-                    case KeyEvent.VK_B -> { if (name.length() < 6) name += "B"; }
-                    case KeyEvent.VK_C -> { if (name.length() < 6) name += "C"; }
-                    case KeyEvent.VK_D -> { if (name.length() < 6) name += "D"; }
-                    case KeyEvent.VK_E -> { if (name.length() < 6) name += "E"; }
-                    case KeyEvent.VK_F -> { if (name.length() < 6) name += "F"; }
-                    case KeyEvent.VK_G -> { if (name.length() < 6) name += "G"; }
-                    case KeyEvent.VK_H -> { if (name.length() < 6) name += "H"; }
-                    case KeyEvent.VK_I -> { if (name.length() < 6) name += "I"; }
-                    case KeyEvent.VK_J -> { if (name.length() < 6) name += "J"; }
-                    case KeyEvent.VK_K -> { if (name.length() < 6) name += "K"; }
-                    case KeyEvent.VK_L -> { if (name.length() < 6) name += "L"; }
-                    case KeyEvent.VK_M -> { if (name.length() < 6) name += "M"; }
-                    case KeyEvent.VK_N -> { if (name.length() < 6) name += "N"; }
-                    case KeyEvent.VK_O -> { if (name.length() < 6) name += "O"; }
-                    case KeyEvent.VK_P -> { if (name.length() < 6) name += "P"; }
-                    case KeyEvent.VK_Q -> { if (name.length() < 6) name += "Q"; }
-                    case KeyEvent.VK_R -> { if (name.length() < 6) name += "R"; }
-                    case KeyEvent.VK_S -> { if (name.length() < 6) name += "S"; }
-                    case KeyEvent.VK_T -> { if (name.length() < 6) name += "T"; }
-                    case KeyEvent.VK_U -> { if (name.length() < 6) name += "U"; }
-                    case KeyEvent.VK_V -> { if (name.length() < 6) name += "V"; }
-                    case KeyEvent.VK_W -> { if (name.length() < 6) name += "W"; }
-                    case KeyEvent.VK_X -> { if (name.length() < 6) name += "X"; }
-                    case KeyEvent.VK_Y -> { if (name.length() < 6) name += "Y"; }
-                    case KeyEvent.VK_Z -> { if (name.length() < 6) name += "Z"; }
+                    case KeyEvent.VK_A, KeyEvent.VK_B, KeyEvent.VK_C, KeyEvent.VK_D,
+                         KeyEvent.VK_E, KeyEvent.VK_F, KeyEvent.VK_G, KeyEvent.VK_H,
+                         KeyEvent.VK_I, KeyEvent.VK_J, KeyEvent.VK_K, KeyEvent.VK_L,
+                         KeyEvent.VK_M, KeyEvent.VK_N, KeyEvent.VK_O, KeyEvent.VK_P,
+                         KeyEvent.VK_Q, KeyEvent.VK_R, KeyEvent.VK_S, KeyEvent.VK_T,
+                         KeyEvent.VK_U, KeyEvent.VK_V, KeyEvent.VK_W, KeyEvent.VK_X,
+                         KeyEvent.VK_Y, KeyEvent.VK_Z -> {
+                        if (name.length() < 6) {
+                            name += KeyEvent.getKeyText(e.getKeyCode());
+                        }
+                    }
                     
-                    case KeyEvent.VK_BACK_SPACE -> { if (name.length() > 0) name = name.substring(0, name.length() - 1); }
+                    case KeyEvent.VK_BACK_SPACE -> {
+                        if (name.length() > 0) {
+                            name = name.substring(0, name.length() - 1);
+                        }
+                    }
                     case KeyEvent.VK_ESCAPE -> {
                         beaten = false;
                         menu = true;

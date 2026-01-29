@@ -3,8 +3,6 @@ public class Snake {
     private final static int[] x = new int[GamePanel.getTotalUnits()];
     private final static int[] y = new int[GamePanel.getTotalUnits()];
     private static int bodyParts; // Snake length
-    private char colorList[] = {'R', 'G', 'B', 'Y', 'C', 'P', 'W'};
-    private int color = 1;
     
     public static int getBodyParts() { return bodyParts; }
     public static void setBodyParts(int n) { bodyParts = n; }
@@ -30,7 +28,7 @@ public class Snake {
         }
         // Check if head touches boarders
         if (x[0] < 0 || x[0] >= GamePanel.getScreenWidth()) return true;
-        if (y[0] < 0 || y[0] >= GamePanel.getScreenHeight()) return true;
+        else if (y[0] < 0 || y[0] >= GamePanel.getScreenHeight()) return true;
         return false;
     }
     

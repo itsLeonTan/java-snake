@@ -4,6 +4,7 @@ public class SnakeGame extends JFrame {
     public SnakeGame() {
         setTitle("Snake");
         setResizable(false);
+        setDefaultCloseOperation(EXIT_ON_CLOSE);
         
         add(new GamePanel());
         

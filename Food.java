@@ -1,33 +1,33 @@
 
 public class Food {
-    private int[] X;
-    private int[] Y;
+    private final int[] x;
+    private final int[] y;
     public Food() {
-        X = new int[10];
-        Y = new int[10];
+        x = new int[10];
+        y = new int[10];
     }
     
-    public int getFoodX(int n) { return X[n]; }
-    public int getFoodY(int n) { return Y[n]; }
+    public int getFoodX(int n) { return x[n]; }
+    public int getFoodY(int n) { return y[n]; }
         
     public void newFood() {
         do{
             if (GamePanel.getRunning()) {
-                X[0] = (int) (Math.random() * (GamePanel.getScreenWidth() / GamePanel.getUnitSize())) * GamePanel.getUnitSize();
-                Y[0] = (int) (Math.random() * (GamePanel.getScreenHeight() / GamePanel.getUnitSize())) * GamePanel.getUnitSize();
+                x[0] = (int) (Math.random() * (GamePanel.getScreenWidth() / GamePanel.getUnitSize())) * GamePanel.getUnitSize();
+                y[0] = (int) (Math.random() * (GamePanel.getScreenHeight() / GamePanel.getUnitSize())) * GamePanel.getUnitSize();
             }
             else if (GamePanel.getMenu()) {
-                X[0] = (int) (Math.random() * (375 / GamePanel.getUnitSize())) * GamePanel.getUnitSize() + 300;
-                Y[0] = (int) (Math.random() * (375 / GamePanel.getUnitSize())) * GamePanel.getUnitSize() + 100;
+                x[0] = (int) (Math.random() * (375 / GamePanel.getUnitSize())) * GamePanel.getUnitSize() + 300;
+                y[0] = (int) (Math.random() * (375 / GamePanel.getUnitSize())) * GamePanel.getUnitSize() + 100;
             }
             
         } while (checkFoodSpawn());
         
         if (GamePanel.getMods() == 'F') {
-            for (int i = 1; i < X.length; i++) {
+            for (int i = 1; i < x.length; i++) {
                 do {
-                    X[i] = (int) (Math.random() * (GamePanel.getScreenWidth() / GamePanel.getUnitSize())) * GamePanel.getUnitSize();
-                    Y[i] = (int) (Math.random() * (GamePanel.getScreenHeight() / GamePanel.getUnitSize())) * GamePanel.getUnitSize();
+                    x[i] = (int) (Math.random() * (GamePanel.getScreenWidth() / GamePanel.getUnitSize())) * GamePanel.getUnitSize();
+                    y[i] = (int) (Math.random() * (GamePanel.getScreenHeight() / GamePanel.getUnitSize())) * GamePanel.getUnitSize();
                 } while (checkFoodSpawn());
             }
         }
@@ -35,24 +35,24 @@ public class Food {
     
     public void newFood(int index) {
         do{
-            X[index] = (int) (Math.random() * (GamePanel.getScreenWidth() / GamePanel.getUnitSize())) * GamePanel.getUnitSize();
-            Y[index] = (int) (Math.random() * (GamePanel.getScreenHeight() / GamePanel.getUnitSize())) * GamePanel.getUnitSize();            
+            x[index] = (int) (Math.random() * (GamePanel.getScreenWidth() / GamePanel.getUnitSize())) * GamePanel.getUnitSize();
+            y[index] = (int) (Math.random() * (GamePanel.getScreenHeight() / GamePanel.getUnitSize())) * GamePanel.getUnitSize();            
         } while (checkFoodSpawn());
     }
     
     public void resetFood() {
-        for (int i = 0; i < X.length; i++) {
-            X[i] = - GamePanel.getUnitSize();
-            Y[i] = - GamePanel.getUnitSize();
+        for (int i = 0; i < x.length; i++) {
+            x[i] = - GamePanel.getUnitSize();
+            y[i] = - GamePanel.getUnitSize();
         }
     }
     
     public boolean checkFoodSpawn() {
         for (int i = 0; i < Snake.getBodyParts(); i++) {
-            if (Snake.getSnakeX(i) == X[0] && Snake.getSnakeY(i) == Y[0]) return true;
+            if (Snake.getSnakeX(i) == x[0] && Snake.getSnakeY(i) == y[0]) return true;
         }
-        for (int j = 1; j < X.length; j++) {
-            if (X[j] == X[0] && Y[j] == Y[0]) return true;
+        for (int j = 1; j < x.length; j++) {
+            if (x[j] == x[0] && y[j] == y[0]) return true;
         }
         return false;
     }
