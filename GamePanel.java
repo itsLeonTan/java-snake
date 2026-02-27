@@ -76,8 +76,7 @@ public class GamePanel extends JPanel implements ActionListener {
         menu = true;
         food.newFood();
         
-        try { updateLeaderboard(); }
-        catch (IOException ioe) { ioe.printStackTrace(); } // Initial leaderboard load, but can create silent error if no file found.
+        updateLeaderboard();
     }
     
     public void menuManager() {
@@ -126,42 +125,38 @@ public class GamePanel extends JPanel implements ActionListener {
         timerChange(100);
     }
     
-    public final void updateLeaderboard() throws IOException {
-        File fileS = new File("ScoreBoard.txt");
-        File fileN = new File("NameBoard.txt");
-        Scanner inputS = new Scanner(fileS);
-        Scanner inputN = new Scanner(fileN);
-        
-        if (beaten) {
-            scoreBoard[9] = score;
-            nameBoard[9] = name;
-            for (int i = 8; i >= 0; i--) {
-                if (scoreBoard[i + 1] > scoreBoard[i]) {
-                    scoreBoard[i + 1] = scoreBoard[i];
-                    scoreBoard[i] = score;
-                    nameBoard[i + 1] = nameBoard[i];
-                    nameBoard[i] = name;
+    public final void updateLeaderboard() {
+        try {
+            File file = new File("Leaderboard.txt");
+            try (Scanner scanner = new Scanner(file)) {
+                // Read from leaderboard.txt
+                for (int i = 0; i < 10; i++) {
+                    nameBoard[i] = scanner.next();
+                    scoreBoard[i] = scanner.nextInt();
+                }
+
+                if (beaten) {
+                    beaten = false;
+                    nameBoard[9] = name;
+                    scoreBoard[9] = score;
+                    for (int i = 8; i >= 0; i--) {
+                        if (scoreBoard[i + 1] > scoreBoard[i]) {
+                            scoreBoard[i + 1] = scoreBoard[i];
+                            scoreBoard[i] = score;
+                            nameBoard[i + 1] = nameBoard[i];
+                            nameBoard[i] = name;
+                        }
+                    }
+                    
+                    try (PrintWriter writer = new PrintWriter(new FileWriter(file))) {
+                        for (int i = 0; i < scoreBoard.length; i++) writer.println(nameBoard[i] + " " + scoreBoard[i]);
+                    }
                 }
             }
             
-            beaten = false;
-            
-            PrintWriter writer1 = new PrintWriter(new FileWriter(fileS));
-            for (int s: scoreBoard) writer1.print(s + " ");
-            writer1.close();
-            
-            PrintWriter writer2 = new PrintWriter(new FileWriter(fileN));
-            for (String n: nameBoard) writer2.println(n);
-            writer2.close();
+        } catch (Exception e) {
+            e.printStackTrace();
         }
-        
-        // Read from leaderboard.txt
-        for (int i = 0; i < 10; i++) {
-            scoreBoard[i] = inputS.nextInt();
-            nameBoard[i] = inputN.nextLine();
-        }
-        inputS.close();
-        inputN.close();
     }
     
     public void checkScoring() {
@@ -568,9 +563,10 @@ public class GamePanel extends JPanel implements ActionListener {
                         food.newFood();
                     }
                     case KeyEvent.VK_ENTER -> {
-                        try { updateLeaderboard(); }
-                        catch (IOException ioe) { ioe.printStackTrace(); }
-                        leaderboard = true;
+                        if (name.length() != 0) {
+                            updateLeaderboard(); 
+                            leaderboard = true;
+                        }
                     }
                 }
             }
